@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	port := ":8901"
+	port := ":8080"
 
 	c, err := chatserver.NewDefaultClient(port)
 	if err != nil {
@@ -16,13 +16,13 @@ func main() {
 	}
 
 	if err := c.Connect(); err != nil {
-		log.Fatal("failed to connect client: %v\n", err)
+		log.Fatalf("failed to connect client: %v\n", err)
 	}
 
 	for {
 		m, err := c.ReceiveMessage()
 		if err != nil {
-			log.Fatal("failed to receive message: %v\n", err)
+			log.Fatalf("failed to receive message: %v\n", err)
 		}
 		fmt.Printf("received: %q\n", *m)
 	}

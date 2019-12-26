@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -13,14 +14,24 @@ import (
 	chat "github.com/kyeett/real-time-chat/proto"
 )
 
+var listenAddr = flag.String("listen", ":8080", "<address>:<port> to listen on")
+
 func main() {
+	flag.Parse()
+
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		log.Fatal("Missing REDIS_URL")
+	}
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	port := ":8901"
-
 	ss := grpc.NewServer()
-	s := chatserver.NewServer(ss)
+	s, err := chatserver.NewServer(ss, redisURL)
+	if err != nil {
+		log.Fatalf("Failed to start server: %v\n", err)
+	}
 	chat.RegisterChatServer(ss, s)
 
 	go func() {
@@ -30,8 +41,8 @@ func main() {
 		s.Stop()
 	}()
 
-	fmt.Printf("Listening on port %s\n", port)
-	lis, err := net.Listen("tcp", port)
+	fmt.Printf("Listening on %s\n", *listenAddr)
+	lis, err := net.Listen("tcp", *listenAddr)
 	if err != nil {
 		log.Fatal(err)
 	}

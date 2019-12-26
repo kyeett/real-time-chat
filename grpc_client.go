@@ -45,3 +45,11 @@ func (c *client) ReceiveMessage() (*string, error) {
 	s := m.GetMessage()
 	return &s, nil
 }
+
+func (c *client) Stop() {
+	if c.stream == nil {
+		return
+	}
+
+	c.stream.CloseSend()
+}

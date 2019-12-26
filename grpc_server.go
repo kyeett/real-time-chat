@@ -18,10 +18,12 @@ type Server struct {
 func (s *Server) StartChat(stream chat.Chat_StartChatServer) error {
 	fmt.Println("Connection initiated", s.redis.client.ClientID().Val())
 	sub := s.redis.client.Subscribe("chatroom 1")
+	defer sub.Close()
 
 	go func() {
-		for i := 0; i < 10; i++ {
-			recv := <-sub.Channel()
+		fmt.Println("Starting receive channel")
+		ch := sub.Channel()
+		for recv := range ch {
 			fmt.Printf("Received %s\n", recv)
 
 			stream.Send(&chat.Message{
@@ -34,32 +36,38 @@ func (s *Server) StartChat(stream chat.Chat_StartChatServer) error {
 		in, err := stream.Recv()
 		fmt.Println("Receive on grpc stream")
 		if err == io.EOF {
+			fmt.Println("EOF")
 			return fmt.Errorf("closed")
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to receive a note : %v", err)
+			err = fmt.Errorf("Failed to receive a note : %v", err)
+			fmt.Println(err)
+			return err
 		}
 		fmt.Println("Send message on redis")
 
-		s.redis.SendMessage(in.GetMessage())
+		fmt.Println("Sending message", in.Message)
+		s.redis.SendMessage(in.Message)
 
-		err = stream.Send(&chat.Message{
-			Message: in.GetMessage() + " + server stuff",
-		})
-		fmt.Println("CHAT3")
+		// err = stream.Send(&chat.Message{
+		// 	Message: in.GetMessage() + " + server stuff",
+		// })
 	}
-
-	return nil
 }
 
-func NewServer(ss *grpc.Server) *Server {
+func NewServer(ss *grpc.Server, redisURL string) (*Server, error) {
+
+	redisService, err := NewRedisService(redisURL)
+	if err != nil {
+		return nil, err
+	}
 
 	s := Server{
-		redis: NewRedisService(),
+		redis: redisService,
 		// grpc:  NewGRPCService(),
 	}
 
-	return &s
+	return &s, nil
 }
 
 func (s *Server) Stop() {

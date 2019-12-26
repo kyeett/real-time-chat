@@ -1,6 +1,7 @@
 package chatserver
 
 import (
+	"github.com/stretchr/testify/require"
 	"fmt"
 	"net"
 	"testing"
@@ -17,7 +18,8 @@ func TestConnect(t *testing.T) {
 	port := ":8901"
 
 	ss := grpc.NewServer()
-	s := NewServer(ss)
+	s, err := NewServer(ss, "redis://127.0.0.1:6379")
+	assert.NoError(t, err)
 	chat.RegisterChatServer(ss, s)
 
 	// Defer clean up
@@ -25,6 +27,8 @@ func TestConnect(t *testing.T) {
 	defer s.Stop()
 
 	lis, err := net.Listen("tcp", port)
+	require.NoError(t,err)
+	
 	go ss.Serve(lis)
 
 	c1, err := NewDefaultClient(port)
